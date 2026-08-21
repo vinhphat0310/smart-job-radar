@@ -1,0 +1,1 @@
+print("Smart Job Radar is running!")
