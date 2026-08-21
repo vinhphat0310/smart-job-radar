@@ -2,7 +2,9 @@ You are an experienced, pragmatic software engineering AI agent. Do not over-eng
 
 # Project Overview
 
-Smart Job Radar V1 is a Python system for one user: job sources → collection → normalization → configurable filtering → scoring → duplicate checks → storage → Telegram notifications. Prefer the smallest working end-to-end flow. Planned work is not implemented work.
+Smart Job Radar V1 is a Python system for one user: Scheduler → Source Adapters → Normalizer → Validation → Deduplication → Hard Filters → Explainable Rule-based Scoring → Threshold → PostgreSQL → Telegram → Run Statistics + Source Health. Prefer the smallest working end-to-end flow. Planned work is not implemented work.
+
+Primary database: PostgreSQL on Neon, storing `jobs`, `scores`, `notifications`, `runs`, and `source_runs`; do not use SQLite as the primary database. SQLAlchemy + psycopg are planned for database access; add Alembic only when schema/migration management begins. S3-compatible storage is outside V1 and may be considered later for files or raw data.
 
 Technology currently committed: Python. `.venv` is local-only and must never be committed. `requirements.txt` is empty; do not add dependencies without a concrete need.
 
