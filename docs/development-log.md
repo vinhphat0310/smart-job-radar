@@ -27,5 +27,10 @@
 
 - Ghi chú V1: dedupe dùng `fingerprint`; khi cần nhận diện repost, mở rộng bằng company/title/location và thời gian repost. Retry notification cập nhật cùng bản ghi `job/profile/channel` và `last_attempt_run_id`; chưa có `notification_attempts`.
 
+### RemoteOK adapter milestone
+- Hoàn thành: thêm `NormalizedJob`, adapter contract và RemoteOK public JSON adapter; bỏ qua metadata/bản ghi không phải job, chuẩn hóa chuỗi trống, ngày, URL, remote mode và salary nguồn.
+- Kiểm tra: `python3 -m unittest discover -s tests`; `python3 -m py_compile src/*.py src/adapters/*.py`; `python3 src/main.py --fetch-remoteok`; `git diff --check`.
+- Phạm vi: `--fetch-remoteok` chỉ fetch/normalize/in tối đa 3 ví dụ, không ghi PostgreSQL hoặc gửi Telegram.
+
 ### Tiếp theo
 - Điền cấu hình Telegram cục bộ và xác nhận gửi tin nhắn thật.

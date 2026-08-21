@@ -4,6 +4,14 @@ Python V1 for one user: Scheduler → Source Adapters → Normalizer → Validat
 
 PostgreSQL on Neon is the primary database for `jobs`, `scores`, `notifications`, `runs`, and `source_runs`; SQLite is not the primary database. SQLAlchemy + psycopg are planned; Alembic is added when schema migrations begin. S3-compatible storage is outside V1 and may be considered later for files or raw data.
 
+## RemoteOK source check
+
+Fetch RemoteOK's public JSON feed and print normalized count plus up to three examples. This command does not write PostgreSQL or send Telegram messages:
+
+```bash
+python3 src/main.py --fetch-remoteok
+```
+
 ## Telegram test
 
 Copy `.env.example` to `.env`, then set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`. After sending `/start` to the bot, get the chat ID without printing the token:

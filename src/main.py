@@ -4,6 +4,7 @@ import sys
 from dotenv import load_dotenv
 
 from database import DatabaseConnectionError, check_connection, check_schema
+from adapters.remoteok import RemoteOKAdapter, RemoteOKError
 from notifications.telegram import TelegramError, get_chat_ids, send_test_message
 
 
@@ -25,6 +26,12 @@ def main() -> None:
             check_connection(_required("DATABASE_URL"))
             print("PostgreSQL connection verified.")
             return
+        if sys.argv[1:] == ["--fetch-remoteok"]:
+            jobs = RemoteOKAdapter().fetch()
+            print(f"RemoteOK normalized jobs: {len(jobs)}")
+            for job in jobs[:3]:
+                print(f"- {job.title} | {job.company or 'Unknown company'} | {job.url}")
+            return
         token = _required("TELEGRAM_BOT_TOKEN")
         if sys.argv[1:] == ["--print-chat-id"]:
             chat_ids = get_chat_ids(token)
@@ -32,7 +39,7 @@ def main() -> None:
             return
         send_test_message(token, _required("TELEGRAM_CHAT_ID"))
         print("Test Telegram message sent.")
-    except (DatabaseConnectionError, TelegramError, ValueError) as error:
+    except (DatabaseConnectionError, RemoteOKError, TelegramError, ValueError) as error:
         print(f"Error: {error}", file=sys.stderr)
         raise SystemExit(1)
 

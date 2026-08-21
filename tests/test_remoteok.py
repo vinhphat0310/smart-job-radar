@@ -1,0 +1,22 @@
+import json
+import sys
+import unittest
+from datetime import datetime, timezone
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+from adapters.remoteok import normalize
+
+
+class RemoteOKNormalizationTests(unittest.TestCase):
+    def test_skips_metadata_and_normalizes_job(self) -> None:
+        payload = json.loads((Path(__file__).parent / "fixtures" / "remoteok.json").read_text())
+        jobs = [job for item in payload if (job := normalize(item)) is not None]
+        self.assertEqual(len(jobs), 1)
+        job = jobs[0]
+        self.assertEqual((job.source, job.source_job_id, job.title, job.company), ("remoteok", "42", "Python Engineer", "Acme"))
+        self.assertEqual(job.work_mode, "REMOTE")
+        self.assertIsNone(job.location)
+        self.assertEqual((job.salary_min, job.salary_max, job.salary_currency), (100000, 150000, "USD"))
+        self.assertEqual(job.posted_at, datetime(2026, 8, 21, 12, 0, tzinfo=timezone.utc))
