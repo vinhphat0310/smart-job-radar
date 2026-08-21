@@ -26,4 +26,14 @@ Set `DATABASE_URL` in local `.env`, then verify PostgreSQL without printing the 
 python3 src/main.py --check-db
 ```
 
+
+Apply the initial schema (writes to the configured database), then check it without changes:
+
+```bash
+alembic upgrade head
+python3 src/main.py --check-schema
+```
+
+V1 deduplicates jobs by fingerprint; upgrade matching to company, title, location, and repost timing when repost handling is needed. Notification retries update the same job/profile/channel record and `last_attempt_run_id`; V1 has no notification-attempt history.
+
 Keep job filters configurable; do not hard-code job criteria. Do not commit credentials, database URLs, or Telegram tokens.

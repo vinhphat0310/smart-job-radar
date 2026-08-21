@@ -3,7 +3,7 @@ import sys
 
 from dotenv import load_dotenv
 
-from database import DatabaseConnectionError, check_connection
+from database import DatabaseConnectionError, check_connection, check_schema
 from notifications.telegram import TelegramError, get_chat_ids, send_test_message
 
 
@@ -17,6 +17,10 @@ def _required(name: str) -> str:
 def main() -> None:
     load_dotenv()
     try:
+        if sys.argv[1:] == ["--check-schema"]:
+            check_schema(_required("DATABASE_URL"))
+            print("PostgreSQL schema verified.")
+            return
         if sys.argv[1:] == ["--check-db"]:
             check_connection(_required("DATABASE_URL"))
             print("PostgreSQL connection verified.")

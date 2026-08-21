@@ -38,6 +38,17 @@ git diff --check
 
 No build, formatter, linter, test runner, clean script, development server, or shell scripts are configured. Do not claim to run or document nonexistent tooling. Add exact commands when tooling is actually added.
 
+# Schema migrations
+
+Install declared dependencies, then set local `DATABASE_URL` before migration commands:
+
+```bash
+alembic upgrade head
+python3 src/main.py --check-schema
+```
+
+`alembic upgrade head` changes the configured PostgreSQL database; `--check-schema` only verifies all V1 tables exist and never prints `DATABASE_URL`.
+
 # Patterns
 
 Filters must remain configurable; never hard-code IT, Remote, Part-time, Vietnam, or other job criteria. Use the standard library or existing dependencies first; new dependencies require technical justification and an update to `requirements.txt`. Do not add Web UI, AI/LLM, PostgreSQL, Redis, Kubernetes, multi-user architecture, speculative abstractions, services, or modules without a clear request.
