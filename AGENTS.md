@@ -61,6 +61,10 @@ Keep secrets outside Git: never commit or expose `.env`, Telegram tokens, API ke
 
 Use only `docs/development-log.md` for technical progress; do not delete its history or create parallel log systems. Update it briefly for a milestone start, completion, block, or material status change: date, item, status, work, checks, issue, next step.
 
+# Tests
+
+Install declared dependencies, then run `pytest`. `--fetch-remoteok` remains fetch/normalize only; `--sync-remoteok` writes only existing `sources`, `jobs`, and `job_occurrences` schema and must not run against Neon without an explicit request.
+
 # Commit and Pull Request Guidelines
 
 Work on branch `VinhPhat`; check it with `git branch --show-current` before significant changes. Do not change branches, merge `main`, rebase, force-push, delete branches, commit, or push unless explicitly requested. The user decides final commit and push.

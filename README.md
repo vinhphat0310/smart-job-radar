@@ -12,6 +12,18 @@ Fetch RemoteOK's public JSON feed and print normalized count plus up to three ex
 python3 src/main.py --fetch-remoteok
 ```
 
+Sync normalized RemoteOK jobs to existing PostgreSQL schema. This writes `sources`, `jobs`, and `job_occurrences`; configure local `DATABASE_URL` first:
+
+```bash
+python3 src/main.py --sync-remoteok
+```
+
+Run tests after installing declared dependencies:
+
+```bash
+pytest
+```
+
 ## Telegram test
 
 Copy `.env.example` to `.env`, then set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`. After sending `/start` to the bot, get the chat ID without printing the token:

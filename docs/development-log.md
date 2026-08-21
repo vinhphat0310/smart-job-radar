@@ -32,5 +32,11 @@
 - Kiểm tra: `python3 -m unittest discover -s tests`; `python3 -m py_compile src/*.py src/adapters/*.py`; `python3 src/main.py --fetch-remoteok`; `git diff --check`.
 - Phạm vi: `--fetch-remoteok` chỉ fetch/normalize/in tối đa 3 ví dụ, không ghi PostgreSQL hoặc gửi Telegram.
 
+### RemoteOK persistence milestone
+- Hoàn thành: thêm fingerprint xác định theo company/title/location với chuẩn hóa Unicode/casefold/khoảng trắng; `--sync-remoteok` ghi `sources`, `jobs`, `job_occurrences` qua savepoint từng job.
+- Hoàn thành: exact match theo `source_job_id` rồi canonical URL cập nhật `last_seen_at`/`fetched_at`; fingerprint khớp tạo occurrence cross-source; thống kê `fetched`, `new_jobs`, `new_occurrences`, `exact`, `cross_source`, `failed`.
+- Kiểm tra: `pytest`; `python3 -m py_compile src/*.py src/adapters/*.py`; `python3 src/main.py --fetch-remoteok`; `git diff --check`.
+- Hoàn thành: đã sync Neon thật thành công hai lần; lần thứ hai phát hiện `100` exact duplicates, không tạo job hoặc occurrence trùng.
+
 ### Tiếp theo
 - Điền cấu hình Telegram cục bộ và xác nhận gửi tin nhắn thật.
