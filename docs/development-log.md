@@ -17,5 +17,8 @@
 - Hoàn thành: thêm gửi tin nhắn thử qua Telegram Bot API bằng biến môi trường; `.env.example` cung cấp tên biến an toàn.
 - Kiểm tra: cần điền token và chat ID cục bộ để gửi tin nhắn thật.
 
+### Neon connection milestone
+- Hoàn thành: thêm kiểm tra kết nối PostgreSQL/Neon bằng `SELECT 1` qua `DATABASE_URL`; chưa tạo schema hoặc bảng.
+
 ### Tiếp theo
 - Điền cấu hình Telegram cục bộ và xác nhận gửi tin nhắn thật.

@@ -3,6 +3,7 @@ import sys
 
 from dotenv import load_dotenv
 
+from database import DatabaseConnectionError, check_connection
 from notifications.telegram import TelegramError, get_chat_ids, send_test_message
 
 
@@ -16,6 +17,10 @@ def _required(name: str) -> str:
 def main() -> None:
     load_dotenv()
     try:
+        if sys.argv[1:] == ["--check-db"]:
+            check_connection(_required("DATABASE_URL"))
+            print("PostgreSQL connection verified.")
+            return
         token = _required("TELEGRAM_BOT_TOKEN")
         if sys.argv[1:] == ["--print-chat-id"]:
             chat_ids = get_chat_ids(token)
@@ -23,7 +28,7 @@ def main() -> None:
             return
         send_test_message(token, _required("TELEGRAM_CHAT_ID"))
         print("Test Telegram message sent.")
-    except (TelegramError, ValueError) as error:
+    except (DatabaseConnectionError, TelegramError, ValueError) as error:
         print(f"Error: {error}", file=sys.stderr)
         raise SystemExit(1)
 

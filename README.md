@@ -18,4 +18,12 @@ Set the returned ID in `.env`, then send the test message:
 python3 src/main.py
 ```
 
+## Neon connection
+
+Set `DATABASE_URL` in local `.env`, then verify PostgreSQL without printing the connection string:
+
+```bash
+python3 src/main.py --check-db
+```
+
 Keep job filters configurable; do not hard-code job criteria. Do not commit credentials, database URLs, or Telegram tokens.
