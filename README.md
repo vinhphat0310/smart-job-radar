@@ -12,6 +12,12 @@ Fetch RemoteOK's public JSON feed and print normalized count plus up to three ex
 python3 src/main.py --fetch-remoteok
 ```
 
+Validate and filter the same feed with `config/search-profile.yaml`; prints fetched, valid, passed, then up to three passing examples. It does not write PostgreSQL or send Telegram messages:
+
+```bash
+python3 src/main.py --filter-remoteok
+```
+
 Sync normalized RemoteOK jobs to existing PostgreSQL schema. This writes `sources`, `jobs`, and `job_occurrences`; configure local `DATABASE_URL` first:
 
 ```bash

@@ -60,16 +60,14 @@ def normalize(item: Any) -> NormalizedJob | None:
     url = _text(item.get("url")) or _text(item.get("apply_url"))
     if not job_id or not title or not url:
         return None
-    tags = item.get("tags")
     location = _text(item.get("location"))
-    remote = item.get("remote") is True or (isinstance(tags, list) and any(str(tag).lower() == "remote" for tag in tags))
     salary_currency = _text(item.get("currency"))
     return NormalizedJob(
         source="remoteok",
         source_job_id=job_id,
         title=title,
         url=url,
-        work_mode="REMOTE" if remote or not location else "UNKNOWN",
+        work_mode="REMOTE",
         company=_text(item.get("company")),
         location=location,
         description=_text(item.get("description")),

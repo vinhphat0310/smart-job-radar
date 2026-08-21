@@ -38,5 +38,30 @@
 - Kiểm tra: `pytest`; `python3 -m py_compile src/*.py src/adapters/*.py`; `python3 src/main.py --fetch-remoteok`; `git diff --check`.
 - Hoàn thành: đã sync Neon thật thành công hai lần; lần thứ hai phát hiện `100` exact duplicates, không tạo job hoặc occurrence trùng.
 
+### Config validation and hard filters milestone
+- Hoàn thành: thêm `SearchProfile` YAML, validation source-independent và hard filters case-insensitive, cấu hình được tại `config/search-profile.yaml`.
+- Kiểm tra: `pytest`; `python3 -m py_compile src/*.py src/adapters/*.py`; `python3 src/main.py --filter-remoteok`; `git diff --check`.
+- Phạm vi: `--filter-remoteok` chỉ fetch/validate/filter/in tối đa 3 ví dụ, không ghi PostgreSQL hoặc gửi Telegram.
+
+### Milestone 6 relevance filtering
+- Hoàn thành: cấu hình profile IT/IT Support/Technical Support/QA và junior/fresher/intern, remote cùng part-time/freelance/internship; hard filter tìm include/exclude trong title, description và trường job liên quan.
+- Kiểm tra: `python3 -m py_compile src/*.py src/adapters/*.py`; `.venv/bin/python -m pytest`; `python3 src/main.py --filter-remoteok`; `git diff --check`.
+- Phạm vi: criteria chỉ ở `config/search-profile.yaml`; salary/hours thiếu vẫn pass; không ghi PostgreSQL hoặc gửi Telegram.
+
+### RemoteOK rejection analysis milestone
+- Hoàn thành: `--filter-remoteok` in số rejected, tối đa ba lý do phổ biến và ba ví dụ title/lý do; chỉ phân tích kết quả hard filter đã có, không đổi quyết định lọc.
+- Kiểm tra: `.venv/bin/python -m pytest` pass `8`; `python3 src/main.py --filter-remoteok` trả `rejected=100`, top `not_allowed:work_mode=96`, `no_include_keyword=68`, `excluded_keyword=15`; `git diff --check` pass.
+
+
+### RemoteOK work mode mapping
+- Hoàn thành: RemoteOK adapter chuẩn hóa mọi bản ghi hợp lệ từ public RemoteOK feed thành `work_mode="REMOTE"`; `location` là giới hạn/khu vực tuyển dụng, không phải tín hiệu on-site.
+- Kiểm tra: live feed trả `100` job hợp lệ, toàn bộ thiếu `remote` và không có tag `remote`, nhưng URL là `/remote-jobs/`; `.venv/bin/python -m pytest`; `python3 src/main.py --filter-remoteok`; `git diff --check`.
+
+
+### RemoteOK final filter result
+- Kết quả: fetched `100`, valid `100`, passed `27`, rejected `73`.
+- Top rejection: `no_include_keyword=68`, `excluded_keyword=15`.
+- Fix: RemoteOK jobs được normalize `work_mode=REMOTE`.
+
 ### Tiếp theo
 - Điền cấu hình Telegram cục bộ và xác nhận gửi tin nhắn thật.

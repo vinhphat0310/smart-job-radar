@@ -6,7 +6,7 @@ Smart Job Radar V1 is a Python system for one user: Scheduler → Source Adapter
 
 Primary database: PostgreSQL on Neon, storing `jobs`, `scores`, `notifications`, `runs`, and `source_runs`; do not use SQLite as the primary database. SQLAlchemy + psycopg are planned for database access; add Alembic only when schema/migration management begins. S3-compatible storage is outside V1 and may be considered later for files or raw data.
 
-Technology currently committed: Python. `.venv` is local-only and must never be committed. `requirements.txt` is empty; do not add dependencies without a concrete need.
+Technology currently committed: Python. `.venv` is local-only and must never be committed. `requirements.txt` declares only concrete runtime and test dependencies; do not add dependencies without a concrete need.
 
 # Reference
 
@@ -63,7 +63,7 @@ Use only `docs/development-log.md` for technical progress; do not delete its his
 
 # Tests
 
-Install declared dependencies, then run `pytest`. `--fetch-remoteok` remains fetch/normalize only; `--sync-remoteok` writes only existing `sources`, `jobs`, and `job_occurrences` schema and must not run against Neon without an explicit request.
+Install declared dependencies, then run `.venv/bin/python -m pytest`. `--fetch-remoteok` remains fetch/normalize only; `--sync-remoteok` writes only existing `sources`, `jobs`, and `job_occurrences` schema and must not run against Neon without an explicit request.
 
 # Commit and Pull Request Guidelines
 

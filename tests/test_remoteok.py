@@ -8,6 +8,21 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from adapters.remoteok import normalize
 
 
+def test_normalizes_remoteok_job_with_location_as_remote() -> None:
+    job = normalize(
+        {
+            "id": "43",
+            "position": "Support Engineer",
+            "url": "https://remoteok.com/remote-jobs/43",
+            "location": "Berlin, Germany",
+            "tags": ["support"],
+        }
+    )
+
+    assert job is not None
+    assert job.work_mode == "REMOTE"
+
+
 def test_skips_metadata_and_normalizes_job() -> None:
     payload = json.loads((Path(__file__).parent / "fixtures" / "remoteok.json").read_text())
     jobs = [job for item in payload if (job := normalize(item)) is not None]

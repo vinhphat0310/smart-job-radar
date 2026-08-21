@@ -1,0 +1,32 @@
+# Empty lists disable that criterion. Values are case-insensitive.
+required_fields:
+  - title
+  - company
+include_keywords:
+  - IT Support
+  - Technical Support
+  - Help Desk
+  - Service Desk
+  - QA
+  - Quality Assurance
+  - Software Tester
+  - Junior Developer
+  - Fresher
+  - Intern
+exclude_keywords:
+  - Sales Advisor
+  - Loss Prevention
+  - Marketing
+  - Accountant
+  - Recruiter
+locations: []
+work_modes:
+  - remote
+employment_types:
+  - part-time
+  - freelance
+  - internship
+  - intern
+  - junior
+  - fresher
+sources: []
