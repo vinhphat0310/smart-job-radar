@@ -1,0 +1,5 @@
+[
+  {"legal": "RemoteOK metadata"},
+  {"id": "42", "position": " Python Engineer ", "company": " Acme ", "url": "https://example.test/jobs/42", "location": "", "date": "2026-08-21T12:00:00Z", "salary_min": 100000, "salary_max": 150000, "currency": "usd", "tags": ["remote"]},
+  {"id": "bad", "position": "No link"}
+]

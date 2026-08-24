@@ -1,0 +1,48 @@
+# Empty lists disable that criterion. Values are case-insensitive.
+# Scores use only profile criteria. Total is capped at 100.
+minimum_score: 80
+scoring_weights:
+  field: 25
+  include: 25
+  employment: 15
+  workmode: 15
+  experience: 10
+  location: 5
+  recent: 5
+required_fields:
+  - title
+  - company
+  - work_mode
+include_keywords:
+  - IT Support
+  - Technical Support
+  - Help Desk
+  - Service Desk
+  - QA
+  - Quality Assurance
+  - Software Tester
+  - Junior Developer
+experience_keywords:
+  - Junior
+  - Fresher
+  - Intern
+  - Entry Level
+  - Graduate
+exclude_keywords:
+  - Sales Advisor
+  - Loss Prevention
+  - Marketing
+  - Accountant
+  - Recruiter
+  - Senior
+  - Lead
+  - Manager
+locations: []
+work_modes:
+  - remote
+employment_types:
+  - part-time
+  - freelance
+  - internship
+  - intern
+sources: []
