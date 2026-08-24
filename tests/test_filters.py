@@ -43,10 +43,13 @@ def test_config_profile_rejects_non_domain_fresher_and_senior_titles() -> None:
     assert apply(job(title="Help Desk Manager"), profile).reasons == ("excluded_keyword",)
 
 
-def test_hard_filters_match_phrase_separator_without_matching_inside_words() -> None:
-    profile = SearchProfile(include_keywords=("Help Desk", "QA"))
+def test_hard_filters_match_equivalent_phrase_separators_without_matching_inside_words() -> None:
+    profile = SearchProfile(include_keywords=("Help Desk", "QA"), employment_types=("part-time",))
     assert apply(job(title="Help-Desk Analyst"), profile).passed
+    assert apply(job(title="Help_Desk Analyst"), profile).passed
     assert apply(job(title="LQA Analyst"), profile).reasons == ("no_include_keyword",)
+    assert apply(job(title="QA Intern", employment_type="PART_TIME"), profile).passed
+    assert apply(job(title="QA Intern", employment_type="part time"), profile).passed
 
 
 def test_hard_filters_exclude_and_explicit_required_fields() -> None:

@@ -33,6 +33,15 @@ def test_config_profile_awards_experience_for_domain_roles(term: str) -> None:
     assert "experience_match: +10" in result.reasons
 
 
+def test_score_awards_employment_for_equivalent_part_time_separators() -> None:
+    profile = SearchProfile(employment_types=("part-time",), scoring_weights={"employment": 15})
+
+    for employment_type in ("PART_TIME", "part time"):
+        result = score(job(employment_type=employment_type, posted_at=None), profile)
+        assert result.score == 15
+        assert result.reasons == ("employment_match: +15",)
+
+
 def test_score_handles_optional_values_and_stale_posting() -> None:
     profile = SearchProfile(scoring_weights={"recent": 10, "experience": 15})
     result = score(job(title="Engineer", description=None, employment_type=None, location=None, posted_at=None), profile)

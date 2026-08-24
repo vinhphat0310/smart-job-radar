@@ -37,7 +37,7 @@ def format_job_message(job: object) -> str:
     heading = f"New job: {score:g} | {title}" if isinstance(score, Number) else f"New job: {title}"
     job_type = " / ".join(value for value in (clean(getattr(job, "employment_type", None)), clean(getattr(job, "work_mode", None))) if value)
     reasons = "; ".join(clean(reason).replace("_match", "").replace(":", "") for reason in getattr(job, "reasons", ()) if clean(reason))
-    fields = (("Company", clean(getattr(job, "company", None))), ("Location", clean(getattr(job, "location", None))), ("Type", job_type), ("Why", reasons))
+    fields = (("Source", clean(getattr(job, "source", None))), ("Company", clean(getattr(job, "company", None))), ("Location", clean(getattr(job, "location", None))), ("Type", job_type), ("Why", reasons))
     url = clean(getattr(job, "url", None))
     return "\n".join(part for part in (heading, *(f"{label}: {value}" for label, value in fields if value), url) if part)
 

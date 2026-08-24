@@ -97,5 +97,14 @@
 - Kiểm tra: `.venv/bin/python -m pytest` pass 39; `py_compile` main/persistence/telegram/tests pass; Neon dry-run `run_id=3`: fetched/valid 99, filtered/scored 3, qualified/candidates/sent/failed 0; run có `dry_run=true`, `notified_count=0`, không notification attempt/sent từ run dry-run; `git diff --check` pass.
 - Live Telegram: không chạy vì live RemoteOK qualified=0; không hạ threshold hay gửi notification giả.
 
+### Milestone 10 Remotive adapter, multi-source lifecycle
+- Hoàn thành: thêm Remotive public API adapter với HTML-to-text stdlib, metadata source và lifecycle chung cho RemoteOK/Remotive; notification hiển thị Source và dùng occurrence URL theo source đang chạy.
+- Kiểm tra: `.venv/bin/python -m pytest` pass 44; `py_compile` pass; Remotive live fetch/lifecycle một lần: fetched/valid 20, filtered/scored/qualified 0, source `OK`; Neon có `sources.remotive=1`, `job_occurrences=20`, run/source_run đúng counters; RemoteOK regression run: fetched/valid 99, filtered/scored 3, source `OK`; `git diff --check` pass.
+- Giới hạn: không live notify vì qualified=0; Remotive public API chỉ chạy một fetch+lifecycle, README ghi tối đa khoảng 4 lần/ngày, scheduler source-specific để milestone sau.
+
+### Milestone 10 separator equivalence fix
+- Hoàn thành: phrase matching coi whitespace, hyphen và underscore tương đương cả candidate/value; `PART_TIME` khớp profile `part-time`, giữ boundary `LQA` không khớp `QA`.
+- Kiểm tra: `.venv/bin/python -m pytest` pass 46; `git diff --check` pass; fixture Remotive `PART_TIME` pass hard filter và nhận employment score.
+
 ### Tiếp theo
 - Điền cấu hình Telegram cục bộ và xác nhận gửi tin nhắn thật.

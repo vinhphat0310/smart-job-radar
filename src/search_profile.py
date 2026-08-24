@@ -40,7 +40,7 @@ def matches(value: str, candidates: tuple[str, ...]) -> bool:
 
 def _phrase_pattern(candidate: str) -> str:
     """Treat whitespace, hyphen, and underscore as equivalent phrase separators."""
-    return re.escape(candidate).replace(r"\ ", r"[\s_-]+")
+    return re.sub(r"(?:\\ |\\-|_)+", lambda _: r"[\s_-]+", re.escape(candidate))
 
 
 def matches_relevance(job: object, candidates: tuple[str, ...]) -> bool:

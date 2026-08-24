@@ -49,6 +49,24 @@ Run tests after installing declared dependencies:
 pytest
 ```
 
+## Remotive source check
+
+Fetch and normalize Remotive's public API without PostgreSQL or Telegram writes:
+
+```bash
+python3 src/main.py --fetch-remotive
+```
+
+Run the same lifecycle with `DATABASE_URL`; `--notify` and `--dry-run` match RemoteOK behavior:
+
+```bash
+python3 src/main.py --run-remotive
+python3 src/main.py --run-remotive --notify
+python3 src/main.py --run-remotive --dry-run
+```
+
+Schedule either public source at most four times per day; do not use these commands for frequent polling.
+
 ## Telegram test
 
 Copy `.env.example` to `.env`, then set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`. After sending `/start` to the bot, get the chat ID without printing the token:

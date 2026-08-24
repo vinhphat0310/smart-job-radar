@@ -5,8 +5,9 @@ from collections import Counter
 from dotenv import load_dotenv
 
 from adapters.remoteok import RemoteOKAdapter, RemoteOKError
+from adapters.remotive import RemotiveAdapter, RemotiveError
 from database import DatabaseConnectionError, check_connection, check_schema
-from persistence import SyncError, run_remoteok, sync_remoteok
+from persistence import SyncError, run_remotive, run_remoteok, sync_remoteok
 from hard_filters import apply
 from scoring import score
 from search_profile import ConfigError, load_search_profile
@@ -32,9 +33,11 @@ def main() -> None:
             check_connection(_required("DATABASE_URL"))
             print("PostgreSQL connection verified.")
             return
-        if sys.argv[1:] == ["--fetch-remoteok"]:
-            jobs = RemoteOKAdapter().fetch()
-            print(f"RemoteOK normalized jobs: {len(jobs)}")
+        if sys.argv[1:] in (["--fetch-remoteok"], ["--fetch-remotive"]):
+            remotive = sys.argv[1:] == ["--fetch-remotive"]
+            source_name, adapter = ("Remotive", RemotiveAdapter()) if remotive else ("RemoteOK", RemoteOKAdapter())
+            jobs = adapter.fetch()
+            print(f"{source_name} normalized jobs: {len(jobs)}")
             for job in jobs[:3]:
                 print(f"- {job.title} | {job.company or 'Unknown company'} | {job.url}")
             return
@@ -66,20 +69,20 @@ def main() -> None:
                 print(f"- {result.score} | {job.title} | {'; '.join(result.reasons) or 'no_matches'} | {job.url}")
             return
         run_args = sys.argv[1:]
-        if run_args in (["--run-remoteok"], ["--run-remoteok", "--notify"], ["--run-remoteok", "--dry-run"]):
-            notify = "--notify" in run_args
-            dry_run = "--dry-run" in run_args
+        source_flag = next((flag for flag in ("--run-remoteok", "--run-remotive") if flag in run_args), None)
+        if source_flag and set(run_args) <= {source_flag, "--notify", "--dry-run"}:
+            notify, dry_run = "--notify" in run_args, "--dry-run" in run_args
+            if notify and dry_run:
+                raise ValueError("--notify and --dry-run cannot be used together.")
             sender = None
             if notify:
                 token, chat_id = _required("TELEGRAM_BOT_TOKEN"), _required("TELEGRAM_CHAT_ID")
                 sender = lambda job: send_job_message(token, chat_id, job)
-            stats = run_remoteok(
-                _required("DATABASE_URL"), load_search_profile("config/search-profile.yaml"), RemoteOKAdapter().fetch,
-                notify=notify, dry_run=dry_run, sender=sender,
-            )
-            print("RemoteOK run: " + ", ".join(f"{name}={value}" for name, value in vars(stats).items()))
+            source_name, runner, fetch = ("Remotive", run_remotive, RemotiveAdapter().fetch) if source_flag == "--run-remotive" else ("RemoteOK", run_remoteok, RemoteOKAdapter().fetch)
+            stats = runner(_required("DATABASE_URL"), load_search_profile("config/search-profile.yaml"), fetch, notify=notify, dry_run=dry_run, sender=sender)
+            print(f"{source_name} run: " + ", ".join(f"{name}={value}" for name, value in vars(stats).items()))
             return
-        if run_args == ["--run-remoteok", "--notify", "--dry-run"] or run_args == ["--run-remoteok", "--dry-run", "--notify"]:
+        if {"--notify", "--dry-run"}.issubset(run_args):
             raise ValueError("--notify and --dry-run cannot be used together.")
         if sys.argv[1:] == ["--sync-remoteok"]:
             stats = sync_remoteok(_required("DATABASE_URL"), RemoteOKAdapter().fetch())
@@ -96,7 +99,7 @@ def main() -> None:
             return
         send_test_message(token, _required("TELEGRAM_CHAT_ID"))
         print("Test Telegram message sent.")
-    except (ConfigError, DatabaseConnectionError, RemoteOKError, SyncError, TelegramError, ValueError) as error:
+    except (ConfigError, DatabaseConnectionError, RemoteOKError, RemotiveError, SyncError, TelegramError, ValueError) as error:
         print(f"Error: {error}", file=sys.stderr)
         raise SystemExit(1)
 

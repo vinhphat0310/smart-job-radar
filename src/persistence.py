@@ -1,4 +1,4 @@
-"""Minimal RemoteOK persistence and V1 deduplication."""
+"""Minimal source persistence and V1 deduplication."""
 
 from __future__ import annotations
 
@@ -58,6 +58,14 @@ class NotificationJob:
     reasons: tuple[str, ...] = ()
     employment_type: str | None = None
     work_mode: str | None = None
+    source: str | None = None
+
+
+@dataclass(frozen=True)
+class SourceMetadata:
+    name: str
+    adapter_key: str
+    base_url: str
 
 
 @dataclass
@@ -79,8 +87,25 @@ class RunStats:
     failed: int = 0
 
 
+REMOTEOK_SOURCE = SourceMetadata("RemoteOK", "remoteok", "https://remoteok.com")
+REMOTIVE_SOURCE = SourceMetadata("Remotive", "remotive", "https://remotive.com")
+
+
+def run_source(database_url: str, profile: SearchProfile, source_metadata: SourceMetadata, fetch: Callable[[], list[NormalizedJob]], *, notify: bool = False, dry_run: bool = False, sender: Callable[[NotificationJob], None] | None = None) -> RunStats:
+    """Run one source lifecycle using its stable source metadata."""
+    if database_url.startswith("postgresql://"):
+        database_url = database_url.replace("postgresql://", "postgresql+psycopg://", 1)
+    try:
+        with Session(create_engine(database_url)) as session:
+            return _run_source(session, profile, source_metadata, fetch, notify=notify, dry_run=dry_run, sender=sender)
+    except SyncError:
+        raise
+    except (ModuleNotFoundError, SQLAlchemyError, ValueError) as error:
+        raise SyncError(f"Could not run {source_metadata.name}. Check DATABASE_URL and Neon access.") from error
+
+
 def run_remoteok(database_url: str, profile: SearchProfile, fetch: Callable[[], list[NormalizedJob]], *, notify: bool = False, dry_run: bool = False, sender: Callable[[NotificationJob], None] | None = None) -> RunStats:
-    """Run RemoteOK lifecycle; notification delivery is explicit and injectable."""
+    """Backward-compatible RemoteOK lifecycle wrapper."""
     if database_url.startswith("postgresql://"):
         database_url = database_url.replace("postgresql://", "postgresql+psycopg://", 1)
     try:
@@ -92,14 +117,24 @@ def run_remoteok(database_url: str, profile: SearchProfile, fetch: Callable[[], 
         raise SyncError("Could not run RemoteOK. Check DATABASE_URL and Neon access.") from error
 
 
+def run_remotive(database_url: str, profile: SearchProfile, fetch: Callable[[], list[NormalizedJob]], *, notify: bool = False, dry_run: bool = False, sender: Callable[[NotificationJob], None] | None = None) -> RunStats:
+    """Run Remotive lifecycle."""
+    return run_source(database_url, profile, REMOTIVE_SOURCE, fetch, notify=notify, dry_run=dry_run, sender=sender)
+
+
 def _run_remoteok(session: Session, profile: SearchProfile, fetch: Callable[[], list[NormalizedJob]], *, notify: bool = False, dry_run: bool = False, sender: Callable[[NotificationJob], None] | None = None) -> RunStats:
-    """Persist lifecycle, then deliver eligible jobs outside the score transaction."""
+    """Backward-compatible RemoteOK lifecycle helper."""
+    return _run_source(session, profile, REMOTEOK_SOURCE, fetch, notify=notify, dry_run=dry_run, sender=sender)
+
+
+def _run_source(session: Session, profile: SearchProfile, source_metadata: SourceMetadata, fetch: Callable[[], list[NormalizedJob]], *, notify: bool = False, dry_run: bool = False, sender: Callable[[NotificationJob], None] | None = None) -> RunStats:
+    """Persist one source lifecycle, then deliver eligible jobs outside score transaction."""
     if notify and dry_run:
         raise ValueError("--notify and --dry-run cannot be used together.")
     started = time.monotonic()
     stored_profile = _profile(session, profile)
     run = Run(search_profile_id=stored_profile.id, config_snapshot=_config_snapshot(profile), dry_run=dry_run)
-    source = _source(session)
+    source = _source(session, source_metadata)
     session.add(run)
     session.flush()
     source_run = SourceRun(run_id=run.id, source_id=source.id, status="OK", fetched_count=0, accepted_count=0)
@@ -129,20 +164,15 @@ def _run_remoteok(session: Session, profile: SearchProfile, fetch: Callable[[], 
                     stats.filtered += 1
                     result = score(normalized, profile)
                     passed_threshold = result.score >= profile.minimum_score
-                    session.add(Score(
-                        job_id=job.id, search_profile_id=stored_profile.id, run_id=run.id,
-                        score=result.score, passed_threshold=passed_threshold,
-                        explanation={"reasons": list(result.reasons), "raw_score": result.raw_score},
-                    ))
+                    session.add(Score(job_id=job.id, search_profile_id=stored_profile.id, run_id=run.id, score=result.score, passed_threshold=passed_threshold, explanation={"reasons": list(result.reasons), "raw_score": result.raw_score}))
                 scored_job_ids.add(job.id)
                 stats.scored += 1
                 stats.qualified += passed_threshold
                 source_run.accepted_count += 1
             except SQLAlchemyError:
                 stats.failed += 1
-                continue
         session.commit()
-        _notify_qualified(session, run, stored_profile.id, scored_job_ids, stats, notify, dry_run, sender)
+        _notify_qualified(session, run, stored_profile.id, source.id, scored_job_ids, stats, notify, dry_run, sender)
         _finish(run, source_run, stats, started, "OK")
         stats.source_status = source_run.status
         session.commit()
@@ -152,11 +182,10 @@ def _run_remoteok(session: Session, profile: SearchProfile, fetch: Callable[[], 
         _finish(run, source_run, stats, started, "FAILED", _safe_error(error))
         stats.source_status = source_run.status
         session.commit()
-        raise SyncError("RemoteOK source failed.") from error
+        raise SyncError(f"{source_metadata.name} source failed.") from error
 
-
-def _notify_qualified(session: Session, run: Run, profile_id: int, job_ids: set[int], stats: RunStats, notify: bool, dry_run: bool, sender: Callable[[NotificationJob], None] | None) -> None:
-    """Deliver newly qualified jobs; each network attempt commits independently."""
+def _notify_qualified(session: Session, run: Run, profile_id: int, source_id: int, job_ids: set[int], stats: RunStats, notify: bool, dry_run: bool, sender: Callable[[NotificationJob], None] | None) -> None:
+    """Deliver newly qualified jobs from this source; each network attempt commits independently."""
     for job_id in job_ids:
         score_row = session.scalar(select(Score).where(Score.job_id == job_id, Score.search_profile_id == profile_id, Score.run_id == run.id))
         if score_row is None or not score_row.passed_threshold:
@@ -172,12 +201,13 @@ def _notify_qualified(session: Session, run: Run, profile_id: int, job_ids: set[
         if not notify:
             continue
         job = session.get(Job, job_id)
-        occurrence = session.scalar(select(JobOccurrence).where(JobOccurrence.job_id == job_id))
+        occurrence = session.scalar(select(JobOccurrence).where(JobOccurrence.job_id == job_id, JobOccurrence.source_id == source_id))
         assert job is not None and occurrence is not None
         explanation = getattr(score_row, "explanation", None) or {}
+        source_name = session.scalar(select(Source.name).where(Source.id == occurrence.source_id))
         payload = NotificationJob(
             job.title, job.company, job.location, occurrence.url, getattr(score_row, "score", None),
-            tuple(explanation.get("reasons", ())), getattr(job, "employment_type", None), getattr(job, "work_mode", None),
+            tuple(explanation.get("reasons", ())), getattr(job, "employment_type", None), getattr(job, "work_mode", None), source_name,
         )
         try:
             assert sender is not None
@@ -266,10 +296,10 @@ def sync_remoteok(database_url: str, jobs: list[NormalizedJob]) -> SyncStats:
     return stats
 
 
-def _source(session: Session) -> Source:
-    source = session.scalar(select(Source).where(Source.adapter_key == "remoteok"))
+def _source(session: Session, metadata: SourceMetadata = REMOTEOK_SOURCE) -> Source:
+    source = session.scalar(select(Source).where(Source.adapter_key == metadata.adapter_key))
     if source is None:
-        source = Source(name="RemoteOK", adapter_key="remoteok", base_url="https://remoteok.com")
+        source = Source(name=metadata.name, adapter_key=metadata.adapter_key, base_url=metadata.base_url)
         session.add(source)
         session.flush()
     return source

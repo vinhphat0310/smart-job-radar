@@ -7,7 +7,7 @@ sys.path.append(str(Path(__file__).resolve().parents[1] / "src"))
 
 from models import Notification
 from notifications.telegram import format_job_message
-from persistence import RunStats, _notify_qualified, _record_notification, _safe_error
+from persistence import NotificationJob, RunStats, _notify_qualified, _record_notification, _safe_error
 
 
 class FakeSession:
@@ -16,8 +16,10 @@ class FakeSession:
         self.jobs = jobs or {}
         self.added = []
         self.commits = 0
+        self.queries = []
 
-    def scalar(self, _query):
+    def scalar(self, query):
+        self.queries.append(str(query))
         return next(self.values)
 
     def get(self, _model, job_id):
@@ -33,7 +35,7 @@ class FakeSession:
 def _run(session, *, notify=False, dry_run=False, sender=None):
     run = SimpleNamespace(id=10, notified_count=0)
     stats = RunStats()
-    _notify_qualified(session, run, 20, {30}, stats, notify, dry_run, sender)
+    _notify_qualified(session, run, 20, 2, {30}, stats, notify, dry_run, sender)
     return run, stats
 
 
@@ -46,6 +48,11 @@ def test_formatter_includes_persisted_score_details():
     message = format_job_message(SimpleNamespace(title="DevOps", company="Radar", location="Remote", url="https://job.test/a", score=80, reasons=("field_match: +25", "include_match: +25", "workmode_match: +15"), employment_type="Full-time", work_mode="Remote"))
     assert message == "New job: 80 | DevOps\nCompany: Radar\nLocation: Remote\nType: Full-time / Remote\nWhy: field +25; include +25; workmode +15\nhttps://job.test/a"
     assert "<" not in message and "\x00" not in message
+
+
+def test_formatter_includes_generic_source():
+    message = format_job_message(SimpleNamespace(title="DevOps", source="Remotive", url="https://job.test/a"))
+    assert "Source: Remotive" in message
 
 
 def test_nonqualified_job_is_not_candidate_or_sent():
@@ -72,7 +79,7 @@ def test_already_sent_job_is_not_resent():
 
 
 def test_success_creates_sent_notification_after_sender_returns():
-    session = FakeSession([SimpleNamespace(passed_threshold=True), None, SimpleNamespace(url="https://job.test/30")], {30: SimpleNamespace(title="Job", company=None, location=None)})
+    session = FakeSession([SimpleNamespace(passed_threshold=True), None, SimpleNamespace(url="https://job.test/30", source_id=1), "RemoteOK"], {30: SimpleNamespace(title="Job", company=None, location=None)})
     run, stats = _run(session, notify=True, sender=lambda _job: None)
     notification = session.added[0]
     assert notification.status == "sent" and notification.sent_at is not None and notification.error_message is None
@@ -80,8 +87,29 @@ def test_success_creates_sent_notification_after_sender_returns():
     assert (stats.sent, run.notified_count, session.commits) == (1, 1, 1)
 
 
+def test_cross_source_notification_uses_current_source_occurrence_url_and_name():
+    payloads = []
+    remotive_occurrence = SimpleNamespace(url="https://remotive.test/jobs/30", source_id=2)
+    session = FakeSession([
+        SimpleNamespace(passed_threshold=True, score=100, explanation={"reasons": ("include_match: +20",)}),
+        None,
+        remotive_occurrence,
+        "Remotive",
+    ], {30: SimpleNamespace(title="Job", company="Radar", location="Remote")})
+
+    _run(session, notify=True, sender=payloads.append)
+
+    assert payloads == [
+        NotificationJob(
+            title="Job", company="Radar", location="Remote", url="https://remotive.test/jobs/30", score=100,
+            reasons=("include_match: +20",), employment_type=None, work_mode=None, source="Remotive",
+        )
+    ]
+    assert "job_occurrences.source_id" in session.queries[2]
+
+
 def test_failure_creates_failed_notification_and_sanitizes_message():
-    session = FakeSession([SimpleNamespace(passed_threshold=True), None, SimpleNamespace(url="https://job.test/30")], {30: SimpleNamespace(title="Job", company=None, location=None)})
+    session = FakeSession([SimpleNamespace(passed_threshold=True), None, SimpleNamespace(url="https://job.test/30", source_id=1), "RemoteOK"], {30: SimpleNamespace(title="Job", company=None, location=None)})
     run, stats = _run(session, notify=True, sender=lambda _job: (_ for _ in ()).throw(RuntimeError("token=secret\nfailed")))
     notification = session.added[0]
     assert notification.status == "failed" and notification.sent_at is None and notification.last_attempt_run_id == 10
