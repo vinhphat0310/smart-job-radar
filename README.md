@@ -18,6 +18,12 @@ Validate and filter the same feed with `config/search-profile.yaml`; prints fetc
 python3 src/main.py --filter-remoteok
 ```
 
+Score hard-filtered RemoteOK jobs with `minimum_score` and `scoring_weights` in `config/search-profile.yaml`; prints deterministic top five only. This command does not write PostgreSQL or send Telegram messages:
+
+```bash
+python3 src/main.py --score-remoteok
+```
+
 Sync normalized RemoteOK jobs to existing PostgreSQL schema. This writes `sources`, `jobs`, and `job_occurrences`; configure local `DATABASE_URL` first:
 
 ```bash

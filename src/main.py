@@ -8,6 +8,7 @@ from adapters.remoteok import RemoteOKAdapter, RemoteOKError
 from database import DatabaseConnectionError, check_connection, check_schema
 from persistence import SyncError, sync_remoteok
 from hard_filters import apply
+from scoring import score
 from search_profile import ConfigError, load_search_profile
 from validation import validate
 from notifications.telegram import TelegramError, get_chat_ids, send_test_message
@@ -51,6 +52,18 @@ def main() -> None:
                 print(f"- rejected example: {job.title} | {', '.join(reasons)}")
             for job in passed[:3]:
                 print(f"- {job.title} | {job.company or 'Unknown company'} | {job.url}")
+            return
+        if sys.argv[1:] == ["--score-remoteok"]:
+            profile = load_search_profile("config/search-profile.yaml")
+            jobs = RemoteOKAdapter().fetch()
+            valid = [job for job in jobs if validate(job).passed]
+            filtered = [job for job in valid if apply(job, profile).passed]
+            scored = [(job, score(job, profile)) for job in filtered]
+            qualified = [(job, result) for job, result in scored if result.score >= profile.minimum_score]
+            scored.sort(key=lambda item: (-item[1].score, item[0].title.casefold(), item[0].source_job_id))
+            print(f"RemoteOK score: fetched={len(jobs)}, valid={len(valid)}, filtered={len(filtered)}, scored={len(scored)}, qualified={len(qualified)}")
+            for job, result in scored[:5]:
+                print(f"- {result.score} | {job.title} | {'; '.join(result.reasons) or 'no_matches'} | {job.url}")
             return
         if sys.argv[1:] == ["--sync-remoteok"]:
             stats = sync_remoteok(_required("DATABASE_URL"), RemoteOKAdapter().fetch())

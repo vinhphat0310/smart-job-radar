@@ -63,5 +63,29 @@
 - Top rejection: `no_include_keyword=68`, `excluded_keyword=15`.
 - Fix: RemoteOK jobs được normalize `work_mode=REMOTE`.
 
+### Milestone 7 config-driven deterministic scoring
+- Hoàn thành: thêm `minimum_score`, `scoring_weights` hợp lệ, scoring giải thích được 0..100 và `--score-remoteok`; không ghi PostgreSQL hoặc gửi Telegram.
+- Kiểm tra: `python3 -m py_compile src/*.py src/adapters/*.py`, `.venv/bin/python -m pytest` pass 13, `git diff --check` pass; live score `fetched=100`, `valid=100`, `filtered=27`, `scored=27`, `passed=27`.
+- Live top 3: `Account Officer`, `Accounts Receivable Clerk`, `Airport Ground Staff Freshers Kochi`, mỗi job score `75`.
+
+### Milestone 7 scoring review fixes
+- Hoàn thành: profile dùng `experience_keywords`; keyword/phrase matching không match trong từ dài hơn trên hard filter và scoring.
+- Kiểm tra: `python3 -m py_compile src/*.py src/adapters/*.py`; `.venv/bin/python -m pytest` pass 15; `python3 src/main.py --score-remoteok` trả fetched 100, valid 100, filtered 2, scored 2, passed 2; `git diff --check` pass.
+- Live top: `QA Tester Entry Level` score 75; `Collections Agent` score 60.
+
+### Milestone 7 scoring configuration revision
+- Hoàn thành: `minimum_score=80`; weights `field=25`, `include=25`, `employment=15`, `workmode=15`, `experience=10`, `location=5`, `recent=5`; parser bắt buộc đúng keys và tổng 100; CLI giữ toàn bộ job qua hard filter, in top score và đếm `qualified`.
+- Kiểm tra: `.venv/bin/python -m pytest` pass 15; `git diff --check` pass; live `--score-remoteok`: `fetched=100`, `valid=100`, `filtered=2`, `scored=2`, `qualified=1`; top `QA Tester Entry Level` 80, `Collections Agent` 70.
+
+### Milestone 7 approved fixes
+- Hoàn thành: relevance include chỉ dùng `title`/`description`, exclude chỉ dùng `title`; `Help-Desk` khớp `Help Desk`; `work_mode` là required config thường; freshness chỉ 0..7 ngày; scoring reason ghi criterion và điểm dương, bỏ weight 0; raw score giữ riêng trước cap 100.
+- Hoàn thành: loader bắt buộc `scoring_weights` đủ bảy key và tổng 100; `--score-remoteok` in explanation compact bằng dấu `;`.
+- Kiểm tra: `.venv/bin/python -m pytest` pass 19; `python3 src/main.py --score-remoteok` trả fetched 99, valid 99, filtered 4, scored 4, qualified 0; `git diff --check` pass.
+
+### Milestone 7 final profile cleanup
+- Hoàn thành: `include_keywords` chỉ còn domain IT/QA; Fresher/Intern giữ ở `experience_keywords`; `employment_types` chỉ part-time/freelance/internship/intern; exclude bổ sung Senior/Lead/Manager.
+- Kiểm tra: `.venv/bin/python -m pytest` pass 25; `python3 src/main.py --score-remoteok` trả fetched 99, valid 99, filtered 3, scored 3, qualified 0; top Collections Agent, DESARROLLADOR FULL STACK, Project Systems Specialist cùng score 70; `git diff --check` pass.
+- Kết quả: Collections Agent vẫn pass live do title/description có domain keyword; Senior Specialist Global QMS không pass do title chứa Senior.
+
 ### Tiếp theo
 - Điền cấu hình Telegram cục bộ và xác nhận gửi tin nhắn thật.
