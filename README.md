@@ -30,10 +30,17 @@ Sync normalized RemoteOK jobs to existing PostgreSQL schema. This writes `source
 python3 src/main.py --sync-remoteok
 ```
 
-Run the full RemoteOK lifecycle with `DATABASE_URL` and `config/search-profile.yaml`. This writes the existing run, source-health, job, and score records; it does not send Telegram messages:
+Run the full RemoteOK lifecycle with `DATABASE_URL` and `config/search-profile.yaml`. Default mode writes run, source-health, job, and score records; it does not send Telegram messages:
 
 ```bash
 python3 src/main.py --run-remoteok
+```
+
+Use `--notify` only for live Telegram delivery; it requires local `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`, never prints either value, and records success only after Telegram accepts the message. Use `--dry-run` to store a dry run and report eligible jobs without Telegram calls or notification-state writes. These flags cannot be combined:
+
+```bash
+python3 src/main.py --run-remoteok --notify
+python3 src/main.py --run-remoteok --dry-run
 ```
 
 Run tests after installing declared dependencies:

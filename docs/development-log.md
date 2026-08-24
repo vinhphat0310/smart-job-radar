@@ -92,5 +92,10 @@
 - Kiểm tra: `.venv/bin/python -m pytest` pass 28; Neon run 1 `run_id=1`: fetched/valid 99, filtered/scored 3, qualified/failed 0; run 2 `run_id=2`: cùng counters, deduplicated 99; `--check-db`, `--check-schema`, `git diff --check` pass.
 - Neon xác nhận: runs 1/2 mỗi run có một source_run `OK`, fetched 99, accepted/scores 3; `search_profiles.default=1`, RemoteOK source=1, `job_occurrences=129`.
 
+### Milestone 9 Telegram notification, persistence, dry-run
+- Hoàn thành: `--run-remoteok` mặc định không gửi; `--notify` gửi từng job qualified chưa có notification `sent`; success/failure update cùng record notification, retry failure ở run sau; `--dry-run` không gọi Telegram và không ghi delivery state.
+- Kiểm tra: `.venv/bin/python -m pytest` pass 39; `py_compile` main/persistence/telegram/tests pass; Neon dry-run `run_id=3`: fetched/valid 99, filtered/scored 3, qualified/candidates/sent/failed 0; run có `dry_run=true`, `notified_count=0`, không notification attempt/sent từ run dry-run; `git diff --check` pass.
+- Live Telegram: không chạy vì live RemoteOK qualified=0; không hạ threshold hay gửi notification giả.
+
 ### Tiếp theo
 - Điền cấu hình Telegram cục bộ và xác nhận gửi tin nhắn thật.

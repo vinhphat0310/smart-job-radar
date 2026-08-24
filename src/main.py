@@ -11,7 +11,7 @@ from hard_filters import apply
 from scoring import score
 from search_profile import ConfigError, load_search_profile
 from validation import validate
-from notifications.telegram import TelegramError, get_chat_ids, send_test_message
+from notifications.telegram import TelegramError, get_chat_ids, send_job_message, send_test_message
 
 
 def _required(name: str) -> str:
@@ -65,12 +65,22 @@ def main() -> None:
             for job, result in scored[:5]:
                 print(f"- {result.score} | {job.title} | {'; '.join(result.reasons) or 'no_matches'} | {job.url}")
             return
-        if sys.argv[1:] == ["--run-remoteok"]:
+        run_args = sys.argv[1:]
+        if run_args in (["--run-remoteok"], ["--run-remoteok", "--notify"], ["--run-remoteok", "--dry-run"]):
+            notify = "--notify" in run_args
+            dry_run = "--dry-run" in run_args
+            sender = None
+            if notify:
+                token, chat_id = _required("TELEGRAM_BOT_TOKEN"), _required("TELEGRAM_CHAT_ID")
+                sender = lambda job: send_job_message(token, chat_id, job)
             stats = run_remoteok(
                 _required("DATABASE_URL"), load_search_profile("config/search-profile.yaml"), RemoteOKAdapter().fetch,
+                notify=notify, dry_run=dry_run, sender=sender,
             )
             print("RemoteOK run: " + ", ".join(f"{name}={value}" for name, value in vars(stats).items()))
             return
+        if run_args == ["--run-remoteok", "--notify", "--dry-run"] or run_args == ["--run-remoteok", "--dry-run", "--notify"]:
+            raise ValueError("--notify and --dry-run cannot be used together.")
         if sys.argv[1:] == ["--sync-remoteok"]:
             stats = sync_remoteok(_required("DATABASE_URL"), RemoteOKAdapter().fetch())
             print(

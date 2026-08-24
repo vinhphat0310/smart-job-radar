@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from domain import NormalizedJob
 from hard_filters import apply
-from models import Job, JobOccurrence, Run, Score, SearchProfile as StoredSearchProfile, Source, SourceRun
+from models import Job, JobOccurrence, Notification, Run, Score, SearchProfile as StoredSearchProfile, Source, SourceRun
 from scoring import score
 from search_profile import SearchProfile
 from validation import validate
@@ -48,6 +48,19 @@ def _normalize(value: str | None) -> str:
 
 
 @dataclass
+class NotificationJob:
+    """Minimal job payload for channel adapters."""
+    title: str
+    company: str | None
+    location: str | None
+    url: str
+    score: float | int | None = None
+    reasons: tuple[str, ...] = ()
+    employment_type: str | None = None
+    work_mode: str | None = None
+
+
+@dataclass
 class RunStats:
     run_id: int | None = None
     source_status: str | None = None
@@ -58,27 +71,34 @@ class RunStats:
     filtered: int = 0
     scored: int = 0
     qualified: int = 0
+    candidates: int = 0
+    sent: int = 0
+    already_notified: int = 0
+    send_failed: int = 0
+    would_send: int = 0
     failed: int = 0
 
 
-def run_remoteok(database_url: str, profile: SearchProfile, fetch: Callable[[], list[NormalizedJob]]) -> RunStats:
-    """Run RemoteOK lifecycle without notification delivery."""
+def run_remoteok(database_url: str, profile: SearchProfile, fetch: Callable[[], list[NormalizedJob]], *, notify: bool = False, dry_run: bool = False, sender: Callable[[NotificationJob], None] | None = None) -> RunStats:
+    """Run RemoteOK lifecycle; notification delivery is explicit and injectable."""
     if database_url.startswith("postgresql://"):
         database_url = database_url.replace("postgresql://", "postgresql+psycopg://", 1)
     try:
         with Session(create_engine(database_url)) as session:
-            return _run_remoteok(session, profile, fetch)
+            return _run_remoteok(session, profile, fetch, notify=notify, dry_run=dry_run, sender=sender)
     except SyncError:
         raise
     except (ModuleNotFoundError, SQLAlchemyError, ValueError) as error:
         raise SyncError("Could not run RemoteOK. Check DATABASE_URL and Neon access.") from error
 
 
-def _run_remoteok(session: Session, profile: SearchProfile, fetch: Callable[[], list[NormalizedJob]]) -> RunStats:
-    """Persist one complete lifecycle; injectable session/fetch keep tests deterministic."""
+def _run_remoteok(session: Session, profile: SearchProfile, fetch: Callable[[], list[NormalizedJob]], *, notify: bool = False, dry_run: bool = False, sender: Callable[[NotificationJob], None] | None = None) -> RunStats:
+    """Persist lifecycle, then deliver eligible jobs outside the score transaction."""
+    if notify and dry_run:
+        raise ValueError("--notify and --dry-run cannot be used together.")
     started = time.monotonic()
     stored_profile = _profile(session, profile)
-    run = Run(search_profile_id=stored_profile.id, config_snapshot=_config_snapshot(profile))
+    run = Run(search_profile_id=stored_profile.id, config_snapshot=_config_snapshot(profile), dry_run=dry_run)
     source = _source(session)
     session.add(run)
     session.flush()
@@ -121,6 +141,8 @@ def _run_remoteok(session: Session, profile: SearchProfile, fetch: Callable[[], 
             except SQLAlchemyError:
                 stats.failed += 1
                 continue
+        session.commit()
+        _notify_qualified(session, run, stored_profile.id, scored_job_ids, stats, notify, dry_run, sender)
         _finish(run, source_run, stats, started, "OK")
         stats.source_status = source_run.status
         session.commit()
@@ -131,6 +153,53 @@ def _run_remoteok(session: Session, profile: SearchProfile, fetch: Callable[[], 
         stats.source_status = source_run.status
         session.commit()
         raise SyncError("RemoteOK source failed.") from error
+
+
+def _notify_qualified(session: Session, run: Run, profile_id: int, job_ids: set[int], stats: RunStats, notify: bool, dry_run: bool, sender: Callable[[NotificationJob], None] | None) -> None:
+    """Deliver newly qualified jobs; each network attempt commits independently."""
+    for job_id in job_ids:
+        score_row = session.scalar(select(Score).where(Score.job_id == job_id, Score.search_profile_id == profile_id, Score.run_id == run.id))
+        if score_row is None or not score_row.passed_threshold:
+            continue
+        stats.candidates += 1
+        notification = session.scalar(select(Notification).where(Notification.job_id == job_id, Notification.search_profile_id == profile_id, Notification.channel == "telegram"))
+        if notification is not None and notification.status == "sent":
+            stats.already_notified += 1
+            continue
+        if dry_run:
+            stats.would_send += 1
+            continue
+        if not notify:
+            continue
+        job = session.get(Job, job_id)
+        occurrence = session.scalar(select(JobOccurrence).where(JobOccurrence.job_id == job_id))
+        assert job is not None and occurrence is not None
+        explanation = getattr(score_row, "explanation", None) or {}
+        payload = NotificationJob(
+            job.title, job.company, job.location, occurrence.url, getattr(score_row, "score", None),
+            tuple(explanation.get("reasons", ())), getattr(job, "employment_type", None), getattr(job, "work_mode", None),
+        )
+        try:
+            assert sender is not None
+            sender(payload)
+        except Exception as error:
+            _record_notification(session, notification, job_id, profile_id, run.id, "failed", _safe_error(error))
+            stats.send_failed += 1
+        else:
+            _record_notification(session, notification, job_id, profile_id, run.id, "sent", None)
+            stats.sent += 1
+        session.commit()
+    run.notified_count = stats.sent
+
+
+def _record_notification(session: Session, notification: Notification | None, job_id: int, profile_id: int, run_id: int, status: str, error: str | None) -> None:
+    if notification is None:
+        notification = Notification(job_id=job_id, search_profile_id=profile_id, last_attempt_run_id=run_id, channel="telegram", status=status)
+        session.add(notification)
+    notification.last_attempt_run_id = run_id
+    notification.status = status
+    notification.sent_at = datetime.now(timezone.utc) if status == "sent" else None
+    notification.error_message = error
 
 
 def _config_snapshot(profile: SearchProfile) -> dict[str, object]:
@@ -160,7 +229,13 @@ def _finish(run: Run, source_run: SourceRun, stats: RunStats, started: float, st
 
 
 def _safe_error(error: Exception) -> str:
-    return str(error).replace("\n", " ")[:200] or type(error).__name__
+    message = str(error).replace("\n", " ")
+    message = re.sub(
+        r"(?i)\b(token|chat(?:_|-)?id|database(?:_|-)?url)(\s*[=:])\s*[^\s,;]+",
+        lambda match: f"{match.group(1)}{match.group(2)}[redacted]", message,
+    )
+    message = re.sub(r"(?i)\b(?:postgres(?:ql)?(?:\+[^:]+)?|mysql|sqlite)://[^\s,;]+", "[redacted database URL]", message)
+    return message[:200] or type(error).__name__
 
 
 def _sync_job_for_run(session: Session, source: Source, normalized: NormalizedJob) -> tuple[Job, bool]:

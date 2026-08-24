@@ -1,6 +1,7 @@
 """Minimal Telegram Bot API helpers."""
 
 import json
+from numbers import Number
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -26,6 +27,24 @@ def _request(token: str, method: str, data: dict[str, str] | None = None) -> dic
     if not payload.get("ok"):
         raise TelegramError("Telegram rejected the request.")
     return payload
+
+
+def format_job_message(job: object) -> str:
+    """Return Telegram-safe plain text for one normalized or stored job."""
+    clean = lambda value: str(value or "").replace("\x00", " ").strip()
+    title = clean(getattr(job, "title", None)) or "Untitled job"
+    score = getattr(job, "score", None)
+    heading = f"New job: {score:g} | {title}" if isinstance(score, Number) else f"New job: {title}"
+    job_type = " / ".join(value for value in (clean(getattr(job, "employment_type", None)), clean(getattr(job, "work_mode", None))) if value)
+    reasons = "; ".join(clean(reason).replace("_match", "").replace(":", "") for reason in getattr(job, "reasons", ()) if clean(reason))
+    fields = (("Company", clean(getattr(job, "company", None))), ("Location", clean(getattr(job, "location", None))), ("Type", job_type), ("Why", reasons))
+    url = clean(getattr(job, "url", None))
+    return "\n".join(part for part in (heading, *(f"{label}: {value}" for label, value in fields if value), url) if part)
+
+
+def send_job_message(token: str, chat_id: str, job: object) -> None:
+    """Send one plain-text job notification."""
+    _request(token, "sendMessage", {"chat_id": chat_id, "text": format_job_message(job)})
 
 
 def send_test_message(token: str, chat_id: str) -> None:
