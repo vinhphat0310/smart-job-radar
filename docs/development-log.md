@@ -87,5 +87,10 @@
 - Kiểm tra: `.venv/bin/python -m pytest` pass 25; `python3 src/main.py --score-remoteok` trả fetched 99, valid 99, filtered 3, scored 3, qualified 0; top Collections Agent, DESARROLLADOR FULL STACK, Project Systems Specialist cùng score 70; `git diff --check` pass.
 - Kết quả: Collections Agent vẫn pass live do title/description có domain keyword; Senior Specialist Global QMS không pass do title chứa Senior.
 
+### Milestone 8 run lifecycle, source health, score persistence
+- Hoàn thành: `--run-remoteok` reuse `search_profiles.default`/RemoteOK source, tạo một `runs` + `source_runs`, sync job, hard-filter, score và lưu mọi score cùng explanation; kết thúc run/source với counters/status thực tế, không gửi Telegram.
+- Kiểm tra: `.venv/bin/python -m pytest` pass 28; Neon run 1 `run_id=1`: fetched/valid 99, filtered/scored 3, qualified/failed 0; run 2 `run_id=2`: cùng counters, deduplicated 99; `--check-db`, `--check-schema`, `git diff --check` pass.
+- Neon xác nhận: runs 1/2 mỗi run có một source_run `OK`, fetched 99, accepted/scores 3; `search_profiles.default=1`, RemoteOK source=1, `job_occurrences=129`.
+
 ### Tiếp theo
 - Điền cấu hình Telegram cục bộ và xác nhận gửi tin nhắn thật.

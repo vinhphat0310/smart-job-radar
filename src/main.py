@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 from adapters.remoteok import RemoteOKAdapter, RemoteOKError
 from database import DatabaseConnectionError, check_connection, check_schema
-from persistence import SyncError, sync_remoteok
+from persistence import SyncError, run_remoteok, sync_remoteok
 from hard_filters import apply
 from scoring import score
 from search_profile import ConfigError, load_search_profile
@@ -64,6 +64,12 @@ def main() -> None:
             print(f"RemoteOK score: fetched={len(jobs)}, valid={len(valid)}, filtered={len(filtered)}, scored={len(scored)}, qualified={len(qualified)}")
             for job, result in scored[:5]:
                 print(f"- {result.score} | {job.title} | {'; '.join(result.reasons) or 'no_matches'} | {job.url}")
+            return
+        if sys.argv[1:] == ["--run-remoteok"]:
+            stats = run_remoteok(
+                _required("DATABASE_URL"), load_search_profile("config/search-profile.yaml"), RemoteOKAdapter().fetch,
+            )
+            print("RemoteOK run: " + ", ".join(f"{name}={value}" for name, value in vars(stats).items()))
             return
         if sys.argv[1:] == ["--sync-remoteok"]:
             stats = sync_remoteok(_required("DATABASE_URL"), RemoteOKAdapter().fetch())
