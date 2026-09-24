@@ -67,6 +67,16 @@ python3 src/main.py --run-remotive --dry-run
 
 Schedule either public source at most four times per day; do not use these commands for frequent polling.
 
+## GitHub Actions
+
+GitHub Actions uses Python 3.13. Configure repository secrets `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, and `TELEGRAM_CHAT_ID` in Settings → Secrets and variables → Actions. Values are passed only as job environment variables and are never printed.
+
+`Scheduled job pipeline` runs on the repository default branch. GitHub cron uses UTC: RemoteOK runs at `0 */6 * * *` (00:00, 06:00, 12:00, 18:00 UTC) and Remotive at `3 */6 * * *` (00:03, 06:03, 12:03, 18:03 UTC), four times per day per public source. Scheduled runs always use `--notify`; a shared `smart-job-radar-pipeline` concurrency group queues overlapping runs without cancelling an active run.
+
+Use Actions → Scheduled job pipeline → Run workflow for a manual run. Choose `remoteok` or `remotive`; default mode is `dry-run`, which does not call Telegram or write notification delivery state. Select `notify` only when live delivery is intended. Pull requests never run the production workflow.
+
+`Tests` runs `python -m pytest` for pushes and pull requests only. It has no secrets and makes no live API, Neon, or Telegram call.
+
 ## Telegram test
 
 Copy `.env.example` to `.env`, then set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`. After sending `/start` to the bot, get the chat ID without printing the token:

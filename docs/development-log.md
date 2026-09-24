@@ -106,5 +106,12 @@
 - Hoàn thành: phrase matching coi whitespace, hyphen và underscore tương đương cả candidate/value; `PART_TIME` khớp profile `part-time`, giữ boundary `LQA` không khớp `QA`.
 - Kiểm tra: `.venv/bin/python -m pytest` pass 46; `git diff --check` pass; fixture Remotive `PART_TIME` pass hard filter và nhận employment score.
 
+
+### Milestone 11 GitHub Actions scheduling and CI
+- Hoàn thành: production workflow chạy tối đa bốn lần/ngày mỗi public source theo GitHub cron UTC: RemoteOK `0 */6 * * *`, Remotive stagger `3 */6 * * *`; manual chọn source/mode với mặc định `dry-run`; schedule luôn `--notify`, dùng concurrency group chung không hủy run đang chạy.
+- Hoàn thành: thêm CI push/pull request chỉ chạy `pytest`, không có secrets hoặc live API; README ghi secrets, default branch, cadence, manual mode và concurrency.
+- Kiểm tra cục bộ: parse hai YAML bằng PyYAML, `.venv/bin/python -m pytest`, `git diff --check`; chưa xác nhận GitHub Actions, Neon, API nguồn hoặc Telegram live.
+- Tiếp theo: cấu hình GitHub repository secrets và xác nhận một manual `dry-run` trên default branch.
+
 ### Tiếp theo
 - Điền cấu hình Telegram cục bộ và xác nhận gửi tin nhắn thật.
