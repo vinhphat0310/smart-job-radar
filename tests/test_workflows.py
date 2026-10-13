@@ -33,6 +33,7 @@ def test_pipeline_schedule_and_dispatch_contract():
 def test_pipeline_concurrency_secrets_and_cli_mapping():
     workflow = load_workflow("pipeline.yml")
     assert workflow["concurrency"] == {"group": "smart-job-radar-pipeline", "cancel-in-progress": "false"}
+    assert workflow["jobs"]["run"]["if"] == "github.event_name == 'workflow_dispatch' || vars.ENABLE_SCHEDULED_PIPELINE == 'true'"
     env = workflow["jobs"]["run"]["env"]
     assert env == {
         "DATABASE_URL": "${{ secrets.DATABASE_URL }}",

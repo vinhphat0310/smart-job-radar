@@ -32,6 +32,7 @@ concurrency:
 
 jobs:
   run:
+    if: github.event_name == 'workflow_dispatch' || vars.ENABLE_SCHEDULED_PIPELINE == 'true'
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
